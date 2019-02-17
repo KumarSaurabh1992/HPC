@@ -219,3 +219,194 @@ void packB(double * PackB, const double * B, const int MatSize, const int BlockS
     }
 }
 
+void dgemm_row(const int N, const double * A, const double * B, double *C ){
+
+    const int BS_J = 24;
+    const int BS_K = 24;
+    const int BS_I = 24;
+    const int BC_J = 8;
+    const int BC_I = 6;
+
+     double *Apack = (double *)_mm_malloc(BS_I * BS_K * sizeof(double), 64);
+    double *Bpack = (double *)_mm_malloc(BS_J * BS_K * sizeof(double), 64);
+
+     for (int j_loop = 0; j_loop < N; j_loop += BS_J) {
+    for (int k_loop = 0; k_loop < N; k_loop += BS_K) {
+      packB(Bpack,B,N,BS_J, BS_K, BC_J, j_loop, k_loop);
+      for (int i_loop = 0; i_loop < N; i_loop += BS_I) {
+        packA(Apack,A,N,BS_I, BS_K, BC_I, i_loop, k_loop);
+        int jc_loc = 0;
+        for (int jc = j_loop; jc < j_loop +std::min(BS_J, N - j_loop); jc += BC_J, jc_loc += 1) {
+          double *Blocal = &Bpack[jc_loc * BS_K * BC_J];
+          int ic_loc = 0;
+          for (int ic = i_loop; ic < i_loop +std::min(BS_I, N - i_loop); ic += BC_I, ic_loc += 1) {
+            double *Alocal = &Apack[ic_loc * BS_K * BC_I];
+            __m256d result0_0 = _mm256_setzero_pd();
+            __m256d result1_0 = _mm256_setzero_pd();
+            __m256d result2_0 = _mm256_setzero_pd();
+            __m256d result3_0 = _mm256_setzero_pd();
+            __m256d result4_0 = _mm256_setzero_pd();
+            __m256d result5_0 = _mm256_setzero_pd();
+            __m256d result0_1 = _mm256_setzero_pd();
+            __m256d result1_1 = _mm256_setzero_pd();
+            __m256d result2_1 = _mm256_setzero_pd();
+            __m256d result3_1 = _mm256_setzero_pd();
+            __m256d result4_1 = _mm256_setzero_pd();
+            __m256d result5_1 = _mm256_setzero_pd();
+            __m256d mA0, mA1, mB0, mB1;
+            for (int k_loc = 0; k_loc <std::min(BS_K, N - k_loop); k_loc += 1) {
+
+               
+              mB0 = _mm256_loadu_pd(&Blocal[k_loc * BC_J + 0]);
+              mB1 = _mm256_loadu_pd(&Blocal[k_loc * BC_J + 4]);
+               
+              mA0 = _mm256_set1_pd(Alocal[k_loc * BC_I + 0]);
+              mA1 = _mm256_set1_pd(Alocal[k_loc * BC_I + 1]);
+              result0_0 = _mm256_add_pd(result0_0, _mm256_mul_pd(mA0, mB0 ));
+              result0_1 = _mm256_add_pd(result0_1, _mm256_mul_pd(mA0, mB1 ));
+              result1_0 = _mm256_add_pd(result1_0, _mm256_mul_pd(mA1, mB0 ));
+              result1_1 = _mm256_add_pd(result1_1, _mm256_mul_pd(mA1, mB1 ));
+
+              mA0 = _mm256_set1_pd(Alocal[k_loc * BC_I + 2]);
+              mA1 = _mm256_set1_pd(Alocal[k_loc * BC_I + 3]);
+              result2_0 = _mm256_add_pd(result2_0, _mm256_mul_pd(mA0, mB0 ));
+              result2_1 = _mm256_add_pd(result2_1, _mm256_mul_pd(mA0, mB1 ));
+              result3_0 = _mm256_add_pd(result3_0, _mm256_mul_pd(mA1, mB0 ));
+              result3_1 = _mm256_add_pd(result3_1, _mm256_mul_pd(mA1, mB1 ));
+
+              mA0 = _mm256_set1_pd(Alocal[k_loc * BC_I + 4]);
+              mA1 = _mm256_set1_pd(Alocal[k_loc * BC_I + 5]);
+              result4_0 = _mm256_add_pd(result4_0, _mm256_mul_pd(mA0, mB0 ));
+              result4_1 = _mm256_add_pd(result4_1, _mm256_mul_pd(mA0, mB1 ));
+              result5_0 = _mm256_add_pd(result5_0, _mm256_mul_pd(mA1, mB0 ));
+              result5_1 = _mm256_add_pd(result5_1, _mm256_mul_pd(mA1, mB1 ));
+              
+              
+            }
+            
+            double buffer[BC_I * BC_J];// __attribute__((aligned(32)));
+            _mm256_storeu_pd(&buffer[0 * BC_J + 0], result0_0);
+            _mm256_storeu_pd(&buffer[0 * BC_J + 4], result0_1);
+            _mm256_storeu_pd(&buffer[1 * BC_J + 0], result1_0);
+            _mm256_storeu_pd(&buffer[1 * BC_J + 4], result1_1);
+            _mm256_storeu_pd(&buffer[2 * BC_J + 0], result2_0);
+            _mm256_storeu_pd(&buffer[2 * BC_J + 4], result2_1);
+            _mm256_storeu_pd(&buffer[3 * BC_J + 0], result3_0);
+            _mm256_storeu_pd(&buffer[3 * BC_J + 4], result3_1);
+            _mm256_storeu_pd(&buffer[4 * BC_J + 0], result4_0);
+            _mm256_storeu_pd(&buffer[4 * BC_J + 4], result4_1);
+            _mm256_storeu_pd(&buffer[5 * BC_J + 0], result5_0);
+            _mm256_storeu_pd(&buffer[5 * BC_J + 4], result5_1);
+            
+            for (int ii = 0; ii <std::min(BC_I, N - ic); ii++) {
+              for (int jj = 0; jj <std::min(BC_J, N - jc); jj++) {
+                C[ic + ii + N * (jc + jj)] += buffer[ii * BC_J + jj];
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  _mm_free(Apack);
+  _mm_free(Bpack);
+
+}
+
+void dgemm_col(const int N, const double * A, const double * B, double *C ){
+
+    const int BS_J = 96;
+    const int BS_K = 48;
+    const int BS_I = 24;
+    const int BC_J = 6;
+    const int BC_I = 8;
+
+     double *Apack = (double *)_mm_malloc(BS_I * BS_K * sizeof(double), 64);
+    double *Bpack = (double *)_mm_malloc(BS_J * BS_K * sizeof(double), 64);
+
+     for (int j_loop = 0; j_loop < N; j_loop += BS_J) {
+    for (int k_loop = 0; k_loop < N; k_loop += BS_K) {
+      // pack B
+      packB(Bpack,B,N,BS_J, BS_K, BC_J, j_loop, k_loop);
+      for (int i_loop = 0; i_loop < N; i_loop += BS_I) {
+        // pack A
+        packA(Apack,A,N,BS_I, BS_K, BC_I, i_loop, k_loop);
+        int jc_loc = 0;
+        for (int jc = j_loop; jc < j_loop +std::min(BS_J, N - j_loop); jc += BC_J, jc_loc += 1) {
+          double *Blocal = &Bpack[jc_loc * BS_K * BC_J];
+          int ic_loc = 0;
+          for (int ic = i_loop; ic < i_loop +std::min(BS_I, N - i_loop); ic += BC_I, ic_loc += 1) {
+            double *Alocal = &Apack[ic_loc * BS_K * BC_I];
+            __m256d result0_0 = _mm256_setzero_pd();
+            __m256d result1_0 = _mm256_setzero_pd();
+            __m256d result2_0 = _mm256_setzero_pd();
+            __m256d result3_0 = _mm256_setzero_pd();
+            __m256d result4_0 = _mm256_setzero_pd();
+            __m256d result5_0 = _mm256_setzero_pd();
+            __m256d result0_1 = _mm256_setzero_pd();
+            __m256d result1_1 = _mm256_setzero_pd();
+            __m256d result2_1 = _mm256_setzero_pd();
+            __m256d result3_1 = _mm256_setzero_pd();
+            __m256d result4_1 = _mm256_setzero_pd();
+            __m256d result5_1 = _mm256_setzero_pd();
+            __m256d mA0, mA1, mB0, mB1;
+            for (int k_loc = 0; k_loc <std::min(BS_K, N - k_loop); k_loc += 1) {
+
+              mB0 = _mm256_loadu_pd(&Alocal[k_loc * BC_I + 0]);
+              mB1 = _mm256_loadu_pd(&Alocal[k_loc * BC_I + 4]);
+            
+               
+              mA0 = _mm256_set1_pd(Blocal[k_loc * BC_J + 0]);
+              mA1 = _mm256_set1_pd(Blocal[k_loc * BC_J + 1]);
+              result0_0 = _mm256_add_pd(result0_0, _mm256_mul_pd(mA0, mB0 ));
+              result0_1 = _mm256_add_pd(result0_1, _mm256_mul_pd(mA0, mB1 ));
+              result1_0 = _mm256_add_pd(result1_0, _mm256_mul_pd(mA1, mB0 ));
+              result1_1 = _mm256_add_pd(result1_1, _mm256_mul_pd(mA1, mB1 ));
+
+              mA0 = _mm256_set1_pd(Blocal[k_loc * BC_J + 2]);
+              mA1 = _mm256_set1_pd(Blocal[k_loc * BC_J + 3]);
+              result2_0 = _mm256_add_pd(result2_0, _mm256_mul_pd(mA0, mB0 ));
+              result2_1 = _mm256_add_pd(result2_1, _mm256_mul_pd(mA0, mB1 ));
+              result3_0 = _mm256_add_pd(result3_0, _mm256_mul_pd(mA1, mB0 ));
+              result3_1 = _mm256_add_pd(result3_1, _mm256_mul_pd(mA1, mB1 ));
+
+
+              mA0 = _mm256_set1_pd(Blocal[k_loc * BC_J + 4]);
+              mA1 = _mm256_set1_pd(Blocal[k_loc * BC_J + 5]);
+              result4_0 = _mm256_add_pd(result4_0, _mm256_mul_pd(mA0, mB0 ));
+              result4_1 = _mm256_add_pd(result4_1, _mm256_mul_pd(mA0, mB1 ));
+              result5_0 = _mm256_add_pd(result5_0, _mm256_mul_pd(mA1, mB0 ));
+              result5_1 = _mm256_add_pd(result5_1, _mm256_mul_pd(mA1, mB1 ));
+            }
+            
+            double buffer[BC_I * BC_J] ;//__attribute__((aligned(32)));
+            _mm256_storeu_pd(&buffer[0 * BC_I + 0], result0_0);
+            _mm256_storeu_pd(&buffer[0 * BC_I + 4], result0_1);
+            _mm256_storeu_pd(&buffer[1 * BC_I + 0], result1_0);
+            _mm256_storeu_pd(&buffer[1 * BC_I + 4], result1_1);
+            _mm256_storeu_pd(&buffer[2 * BC_I + 0], result2_0);
+            _mm256_storeu_pd(&buffer[2 * BC_I + 4], result2_1);
+            _mm256_storeu_pd(&buffer[3 * BC_I + 0], result3_0);
+            _mm256_storeu_pd(&buffer[3 * BC_I + 4], result3_1);
+            _mm256_storeu_pd(&buffer[4 * BC_I + 0], result4_0);
+            _mm256_storeu_pd(&buffer[4 * BC_I + 4], result4_1);
+            _mm256_storeu_pd(&buffer[5 * BC_I + 0], result5_0);
+            _mm256_storeu_pd(&buffer[5 * BC_I + 4], result5_1);
+        
+            for (int ii = 0; ii <std::min(BC_I, N - ic); ii++) {
+              for (int jj = 0; jj <std::min(BC_J, N - jc); jj++) {
+                C[ic + ii + N * (jc + jj)] += buffer[ii  + jj*BC_I];
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  _mm_free(Apack);
+  _mm_free(Bpack);
+
+}
+

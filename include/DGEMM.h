@@ -22,4 +22,8 @@ void packA(double * PackA, const double * A, const int MatSize, const int BlockS
 void packB(double * PackB, const double * B, const int MatSize, const int BlockSizeJ, const int BlockSizeK,
            const int columnStride, const int  startj, const int startk );
 
+void dgemm_row(const int N, const double * A, const double * B, double *C );
+
+void dgemm_col(const int N, const double * A, const double * B, double *C );
+
 #endif //TUTORIALS_DGEMM_H
