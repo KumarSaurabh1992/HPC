@@ -13,6 +13,13 @@ inline int max( int a, int b ) { return a > b ? a : b; }
 #define SE 6
 #define  S 7
 
+//
+#define density 0.0005
+#define mass    0.01
+#define cutoff  0.01
+#define min_r   (cutoff/100)
+#define dt      0.0005
+
 
 
 //
@@ -32,6 +39,7 @@ typedef struct
   double vy;
   double ax;
   double ay;
+  unsigned int gid;
 } particle_t;
 
 typedef struct

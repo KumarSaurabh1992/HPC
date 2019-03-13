@@ -12,12 +12,6 @@ double size;
 
 //
 //  tuned constants
-//
-#define density 0.0005
-#define mass    0.01
-#define cutoff  0.01
-#define min_r   (cutoff/100)
-#define dt      0.0005
 
 //
 //  timer
@@ -42,7 +36,6 @@ double read_timer( )
 void set_size( int n )
 {
     size = sqrt( density * n );
-    printf("Size = %f\n",size);
 }
 
 //
