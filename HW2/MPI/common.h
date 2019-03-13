@@ -4,15 +4,22 @@
 inline int min( int a, int b ) { return a < b ? a : b; }
 inline int max( int a, int b ) { return a > b ? a : b; }
 
+#define SW 0
+#define  W 1
+#define NW 2
+#define  N 3
+#define NE 4
+#define  E 5
+#define SE 6
+#define  S 7
+
+
+
 //
 //  saving parameters
 //
 const int NSTEPS = 1000;
 const int SAVEFREQ = 10;
-
-
-#include <vector>
-using std::vector;
 
 //
 // particle data structure
@@ -29,12 +36,10 @@ typedef struct
 
 typedef struct
 {
-    //int * id_;
-    //int count_;
-    //unsigned int neighbours_[8];
-    vector<particle_t> binParticle;
+    int * id_;
+    int count_ = 0;
+    unsigned int neighbours_[8];
 } grid_t;
-
 //
 //  timing routines
 //
@@ -63,8 +68,5 @@ int read_int( int argc, char **argv, const char *option, int default_value );
 char *read_string( int argc, char **argv, const char *option, char *default_value );
 
  double get_size();
-double get_cutoff();
-
-void gridParticle(grid_t *grid, particle_t *particle, int n);
 
 #endif

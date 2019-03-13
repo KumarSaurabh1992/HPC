@@ -42,6 +42,7 @@ double read_timer( )
 void set_size( int n )
 {
     size = sqrt( density * n );
+    printf("Size = %f\n",size);
 }
 
 //
@@ -185,29 +186,6 @@ char *read_string( int argc, char **argv, const char *option, char *default_valu
     return default_value;
 }
 
-double get_size(){
+ double get_size(){
     return  size;
-}
-
-double get_cutoff(){
-  return cutoff;
-}
-
-// set grid and distribue particles
-void gridParticle(vector<grid_t>&grid,particle_t *particles,  int n) {
-  int NElemX = size/cutoff;
-  int NElem = NElemX * NElemX;
-
-  int rowId, columnID;
-
-  for (int i = 0; i < n; i++) {
-    columnID = particles[i].x/cutoff;
-    rowId = particles[i].y/cutoff;
-    printf("PID: %d\n",i);
-    printf("rowId*NElemX+columnID: %d\n", rowId*NElemX+columnID);
-    grid[rowId*NElemX+columnID].binParticle.push_back(particles[i]);
-
-      //printf("ParticleID: %d, xPos: %.4f, yPos: %.4f, xId: %d, yId: %d \n",i,particles[i].x,particles[i].y,columnID,rowId);
-  }
-
 }
