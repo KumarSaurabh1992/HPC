@@ -122,6 +122,7 @@ int main(int argc, char *argv[])
 
     int start_row = max((rank)*num_row_per_proc - 1,0);
     int end_row = min((rank+1)*num_row_per_proc+1,NumGrid);
+  
     int num_row = num_row_per_proc+2;
 
     if((rank == 0) or (rank == n_proc - 1)){
@@ -151,7 +152,7 @@ int main(int argc, char *argv[])
     
     for(int i = 0; i < n_proc; i++){
         if(rank == i){
-            std::cout << "Rank = " << rank << " Start Row = " << start_row <<  " End row = " << end_row << 
+            std::cout << "Rank = " << rank << " Start Row = " << start_row <<  " End row = " << end_row -1<< 
             " " << start_proc_boundary << " " << end_proc_boundary << " " << exchange_up << " " << exchange_down << "\n";  
         }
         MPI_Barrier(MPI_COMM_WORLD);
@@ -173,6 +174,10 @@ int main(int argc, char *argv[])
         /**Computing neigbourhood index of grid **/
         unsigned int idx = i/NumGrid;
         unsigned int idy = i%NumGrid;
+        // if(rank == 0 and i == 7){
+        //     std::cout << idx << " " << idy << " "<< NumGrid << " " << num_row << "\n";
+        //     assert(false);
+        // }
         for(int j = 0; j < 8; j++){
             grid[i].neighbours_[j] = -1;
         }
@@ -217,7 +222,7 @@ int main(int argc, char *argv[])
             grid[i].neighbours_[NE] = getGridIndex(idx+1,idy+1,NumGrid);
             grid[i].neighbours_[E]  = getGridIndex(idx+1,idy  ,NumGrid);
         }
-        else if(idy == (num_row - 1)){
+        else if(idy == (NumGrid - 1)){
             grid[i].neighbours_[E]  = getGridIndex(idx+1,idy  ,NumGrid);
             grid[i].neighbours_[SE] = getGridIndex(idx+1,idy-1,NumGrid);
             grid[i].neighbours_[W]  = getGridIndex(idx-1,idy  ,NumGrid);
@@ -235,6 +240,15 @@ int main(int argc, char *argv[])
             grid[i].neighbours_[NE] = getGridIndex(idx+1,idy+1,NumGrid);
         }
 
+    }
+    if (rank == n_proc - 1){
+        // std::cout << num_row << "\n";
+        
+        for(int i = 0;i < NumGrid; i++){
+            grid[(num_row - 2)*NumGrid + i].neighbours_[N ] = -1;
+            grid[(num_row - 2)*NumGrid + i].neighbours_[NW] = -1;
+            grid[(num_row - 2)*NumGrid + i].neighbours_[NE] = -1;
+        }
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -269,17 +283,19 @@ int main(int argc, char *argv[])
         std::cout << "Total sum = " << sum_all   << "\n";
     }
     MPI_Barrier(MPI_COMM_WORLD);
-    if(rank == 1){
+    if(rank == 0){
+        
         for(int i = startGrid; i < endGrid; i++){
+            std::cout << "Neighbours of   " << i << "="; 
             for(int j = 0; j < 8; j++){
-                std::cout << i << " " <<grid[i].neighbours_[j] << " ";
+                std::cout << " " <<grid[i].neighbours_[j] << " ";
             }
             std::cout << "\n";
         }
     }
     MPI_Barrier(MPI_COMM_WORLD);
     /**Checking particle exchange **/
-    std::vector<particle_t> sendParticles;
+/*    std::vector<particle_t> sendParticles;
     particle_t *receive_particle = (particle_t*) malloc( 100 * sizeof(particle_t) );
     particle_t sp1,sp2;
     sp1.x = rank; sp1.y = rank; sp1.vx = -rank; sp1.vy = -rank;  
@@ -295,28 +311,33 @@ int main(int argc, char *argv[])
     MPI_Recv(&receive_particle[0],100,PARTICLE,exchange_down,MPI_ANY_TAG,MPI_COMM_WORLD,&status[0]);
     if(rank == 2)
         std::cout << "Received particle = " << rank << " " << receive_particle[0].x << " " << receive_particle[0].y << " " 
-        << receive_particle[1].x << " " << receive_particle[1].y << " "  << status[0].MPI_TAG << " " << status[0].MPI_SOURCE << "\n";
+        << receive_particle[1].x << " " << receive_particle[1].y << " "  << status[0].MPI_TAG << " " << status[0].MPI_SOURCE << "\n";*/
     
-
-    // for (int step = 0; step < 1; step++) {
-    //     for(int i = startGrid; i < endGrid ; i++){
-    //     for(int part = 0; part < grid[i].count_; part++){
-    //             counter++;
-    //             particles[grid[i].id_[part]].ax = 0;
-    //             particles[grid[i].id_[part]].ay = 0;
-    //             for(int partGrid = 0; partGrid < grid[i].count_; partGrid++){
-    //                 apply_force(particles[grid[i].id_[part]],particles[grid[i].id_[partGrid]], &dmin, &davg, &navg);
-    //             }
-    //             for(int neigh = 0; neigh < 8; neigh++){
-    //                 unsigned int neighbour_id =grid[i].neighbours_[neigh];
-    //                 if( neighbour_id != -1){
-    //                     for(int part_neigh = 0; part_neigh < grid[neighbour_id].count_; part_neigh++){
-    //                         apply_force(particles[grid[i].id_[part]], particles[grid[neighbour_id].id_[part_neigh]], &dmin, &davg, &navg);
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
+    if(rank == 0)
+    for (int step = 0; step < 1; step++) {
+        for(int i = startGrid; i < endGrid ; i++){
+        for(int part = 0; part < grid[i].count_; part++){
+                local_particles[grid[i].id_[part]].ax = 0;
+                local_particles[grid[i].id_[part]].ay = 0;
+                for(int partGrid = 0; partGrid < grid[i].count_; partGrid++){
+                    apply_force(local_particles[grid[i].id_[part]],local_particles[grid[i].id_[partGrid]], &dmin, &davg, &navg);
+                }
+                for(int neigh = 0; neigh < 8; neigh++){
+                    unsigned int neighbour_id =grid[i].neighbours_[neigh];
+                    if( neighbour_id != -1){
+                        std::cout << neighbour_id << " " << num_row*NumGrid << "\n";
+                        for(int part_neigh = 0; part_neigh < grid[neighbour_id].count_; part_neigh++){
+                            apply_force(local_particles[grid[i].id_[part]], local_particles[grid[neighbour_id].id_[part_neigh]], &dmin, &davg, &navg);
+                        }
+                    }
+                }
+            }
+        }
+        for(int part = 0; part < local_particles.size(); part++){
+            move(local_particles[part]);
+        }
+    }
+   
     //     std::cout << counter << "\n";
     //     counter = 0;
     //     MPI_Barrier(MPI_COMM_WORLD);
