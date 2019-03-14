@@ -422,14 +422,14 @@ int main(int argc, char *argv[]) {
 
 
     }
-    if(rank == 1){
-        for(int i = 0; i < num_row*NumGrid; i++){
-            for(int j = 0; j < 8; j++) {
-                std::cout << "Neighbours of i = " << i << " " <<grid[i].neighbours_[j] << " ";
-            }
-            std::cout << "\n";
-        }
-    }
+//    if(rank == 1){
+//        for(int i = 0; i < num_row*NumGrid; i++){
+//            for(int j = 0; j < 8; j++) {
+//                std::cout << "Neighbours of i = " << i << " " <<grid[i].neighbours_[j] << " ";
+//            }
+//            std::cout << "\n";
+//        }
+//    }
 
     int sum_all;
     MPI_Reduce(&sum, &sum_all, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -476,49 +476,49 @@ int main(int argc, char *argv[]) {
 //        std::cout << global_max << "\n";
 //    }
 //    assert(false);
-    for (int step = 0; step < 14; step++) {
-        if(step == 13 and (rank == 1)){
-            for(int i = 0; i < local_particles.size();i++){
-                std::cout << "Local Particles = " << local_particles[i].x << " " << local_particles[i].y << " " << local_particles[i].ax << " " << local_particles[i].ay
-                << " " << local_particles[i].gid << " "<< startGrid << " "<< endGrid << "\n";
-            }
-        }
+    for (int step = 0; step < 1000; step++) {
+//        if(step == 13 and (rank == 1)){
+//            for(int i = 0; i < local_particles.size();i++){
+//                std::cout << "Local Particles = " << local_particles[i].x << " " << local_particles[i].y << " " << local_particles[i].ax << " " << local_particles[i].ay
+//                << " " << local_particles[i].gid << " "<< startGrid << " "<< endGrid << "\n";
+//            }
+//        }
         max_vel = 0;
         for (int i = startGrid; i < endGrid; i++) {
-            if((rank == 1) and (step == 13)){
-                int _idx_ = grid[i].id_[i];
-                std::cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<Base particle = " << local_particles[_idx_].x << " "<< local_particles[_idx_].y << " " <<local_particles[_idx_].vx << " "
-                          << local_particles[_idx_].vy << " " << local_particles[_idx_].ax << " " << local_particles[_idx_].ay << "\n";
-            }
-            if(rank == 1){
-                std::cout << "--------------------Step = " << step << " " <<grid[i].count_ << "\n";
-            }
+//            if((rank == 1) and (step == 13)){
+//                int _idx_ = grid[i].id_[i];
+//                std::cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<Base particle = " << local_particles[_idx_].x << " "<< local_particles[_idx_].y << " " <<local_particles[_idx_].vx << " "
+//                          << local_particles[_idx_].vy << " " << local_particles[_idx_].ax << " " << local_particles[_idx_].ay << "\n";
+//            }
+//            if(rank == 1){
+//                std::cout << "--------------------Step = " << step << " " <<grid[i].count_ << "\n";
+//            }
             for (int part = 0; part < grid[i].count_; part++) {
                 local_particles[grid[i].id_[part]].ax = 0;
                 local_particles[grid[i].id_[part]].ay = 0;
 
                 for (int partGrid = 0; partGrid < grid[i].count_; partGrid++) {
-                    if((rank == 1) and (step == 13)){
-                        int _idx_ = grid[i].id_[partGrid];
-                        std::cout << "Interacting particle = " << local_particles[_idx_].x << " "<< local_particles[_idx_].y << " " <<local_particles[_idx_].vx << " "
-                                  << local_particles[_idx_].vy << " " << local_particles[_idx_].ax << " " << local_particles[_idx_].ay << "\n";
-                    }
+//                    if((rank == 1) and (step == 13)){
+//                        int _idx_ = grid[i].id_[partGrid];
+//                        std::cout << "Interacting particle = " << local_particles[_idx_].x << " "<< local_particles[_idx_].y << " " <<local_particles[_idx_].vx << " "
+//                                  << local_particles[_idx_].vy << " " << local_particles[_idx_].ax << " " << local_particles[_idx_].ay << "\n";
+//                    }
 
                     apply_force(local_particles[grid[i].id_[part]], local_particles[grid[i].id_[partGrid]], &dmin,
                                 &davg, &navg);
                 }
                 for (int neigh = 0; neigh < 8; neigh++) {
                     unsigned int neighbour_id = grid[i].neighbours_[neigh];
-                    if(rank == 1 and step == 13){
-                        std::cout << "Neighbour id = " << neigh << " " << part << " " << step << " "<<  neighbour_id << "\n";
-                    }
+//                    if(rank == 1 and step == 13){
+//                        std::cout << "Neighbour id = " << neigh << " " << part << " " << step << " "<<  neighbour_id << "\n";
+//                    }
                     if (neighbour_id != -1) {
                         for (int part_neigh = 0; part_neigh < grid[neighbour_id].count_; part_neigh++) {
-                            if((rank == 1) and (step == 13)){
-                                int _idx_ = grid[neighbour_id].id_[part_neigh];
-                                std::cout << "Interacting particle neigh= " << local_particles[_idx_].x << " "<< local_particles[_idx_].y << " " <<local_particles[_idx_].vx << " "
-                                          << local_particles[_idx_].vy << " " << local_particles[_idx_].ax << " " << local_particles[_idx_].ay << "\n";
-                            }
+//                            if((rank == 1) and (step == 13)){
+//                                int _idx_ = grid[neighbour_id].id_[part_neigh];
+//                                std::cout << "Interacting particle neigh= " << local_particles[_idx_].x << " "<< local_particles[_idx_].y << " " <<local_particles[_idx_].vx << " "
+//                                          << local_particles[_idx_].vy << " " << local_particles[_idx_].ax << " " << local_particles[_idx_].ay << "\n";
+//                            }
                             apply_force(local_particles[grid[i].id_[part]],
                                         local_particles[grid[neighbour_id].id_[part_neigh]], &dmin, &davg, &navg);
 
@@ -541,16 +541,16 @@ int main(int argc, char *argv[]) {
         }
 
         erase_buffer_particles(grid, local_particles, rank, num_row, n_proc, NumGrid,realProcBoundaryStart,realProcBoundaryEnd);
-       std::string filename = "file" + std::to_string(n_proc) + "_" + std::to_string(rank) + "_" + std::to_string(step);
-        std::ofstream myfile;
-
-        myfile.open (filename);
-
-        for(int i = 0; i < local_particles.size(); i++){
-            myfile << static_cast<int>(local_particles.size()) << " " <<rank << " " << local_particles[i].x << " " << local_particles[i].y << " " << local_particles[i].vx << " "<<
-            local_particles[i].vy << " " << local_particles[i].ax << " " << local_particles[i].ay << "\n";
-        }
-        myfile.close();
+//       std::string filename = "file" + std::to_string(n_proc) + "_" + std::to_string(rank) + "_" + std::to_string(step);
+//        std::ofstream myfile;
+//
+//        myfile.open (filename);
+//
+//        for(int i = 0; i < local_particles.size(); i++){
+//            myfile << static_cast<int>(local_particles.size()) << " " <<rank << " " << local_particles[i].x << " " << local_particles[i].y << " " << local_particles[i].vx << " "<<
+//            local_particles[i].vy << " " << local_particles[i].ax << " " << local_particles[i].ay << "\n";
+//        }
+//        myfile.close();
 
         int num_part;
         int local_part = static_cast<int>(local_particles.size());
