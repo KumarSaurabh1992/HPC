@@ -441,8 +441,9 @@ int main(int argc, char *argv[]) {
     }
 
     std::vector<particle_t> send_up, send_down;
-    particle_t *receive_up = (particle_t *) malloc(100 * sizeof(particle_t));
-    particle_t *receive_down = (particle_t *) malloc(100 * sizeof(particle_t));
+    unsigned int exchangeParticleSize =  ParticlePerGrid*2*NumGrid ;
+    particle_t *receive_up = (particle_t *) malloc(exchangeParticleSize * sizeof(particle_t));
+    particle_t *receive_down = (particle_t *) malloc(exchangeParticleSize* sizeof(particle_t));
     /**Checking particle exchange **/
 /*    std::vector<particle_t> sendParticles;
     particle_t *receive_particle = (particle_t*) malloc( 100 * sizeof(particle_t) );
@@ -577,8 +578,8 @@ int main(int argc, char *argv[]) {
         MPI_Isend(send_down.data(), send_down.size(), PARTICLE, exchange_down, send_down.size(), MPI_COMM_WORLD,
                   &request[1]);
 //        std::cout << send_up.size() << " " << send_down.size() << "\n";
-        MPI_Recv(&receive_up[0], 100, PARTICLE, exchange_up, MPI_ANY_TAG, MPI_COMM_WORLD, &status[0]);
-        MPI_Recv(&receive_down[0], 100, PARTICLE, exchange_down, MPI_ANY_TAG, MPI_COMM_WORLD, &status[1]);
+        MPI_Recv(&receive_up[0], exchangeParticleSize, PARTICLE, exchange_up, MPI_ANY_TAG, MPI_COMM_WORLD, &status[0]);
+        MPI_Recv(&receive_down[0], exchangeParticleSize, PARTICLE, exchange_down, MPI_ANY_TAG, MPI_COMM_WORLD, &status[1]);
         for (int i = 0; i < status[0].MPI_TAG; i++) {
             assert((receive_up[i].x >= start_proc_boundary) and (receive_up[i].x <= end_proc_boundary));
             local_particles.push_back(receive_up[i]);
