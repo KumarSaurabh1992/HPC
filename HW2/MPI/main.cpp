@@ -47,23 +47,23 @@ void bin_particles_start(std::vector<particle_t> &local_particles, particle_t *p
 
 void
 bin_particles(std::vector<particle_t> &local_particles,  grid_t *grid, double start_proc_boundary,
-              double end_proc_boundary, int NumGrid, double dx) {
+              double end_proc_boundary, int NumGrid, double OneByDx) {
 
     unsigned int idx, idy, id;
     int counter(0);
 
     for (int i = 0; i < local_particles.size(); i++) {
-        if(not((local_particles[i].x >= start_proc_boundary) and (local_particles[i].x <= end_proc_boundary))){
-            std::iter_swap(&local_particles[i], &local_particles[local_particles.size() - 1]);
-            local_particles.pop_back();
-            i = i - 1;
-            continue;
-        }
+//        if(not((local_particles[i].x >= start_proc_boundary) and (local_particles[i].x <= end_proc_boundary))){
+//            std::iter_swap(&local_particles[i], &local_particles[local_particles.size() - 1]);
+//            local_particles.pop_back();
+//            i = i - 1;
+//            continue;
+//        }
         assert((local_particles[i].x >= start_proc_boundary) and (local_particles[i].x <= end_proc_boundary));
 
         double x = local_particles[i].x - start_proc_boundary;
-        idx = static_cast<unsigned int>(x * dx);
-        idy = static_cast<unsigned int>(local_particles[i].y * dx);
+        idx = static_cast<unsigned int>(x * OneByDx);
+        idy = static_cast<unsigned int>(local_particles[i].y * OneByDx);
         id = (idx * NumGrid + idy);
         grid[id].id_[grid[id].count_] = counter;
         local_particles[i].gid = id;
@@ -71,6 +71,11 @@ bin_particles(std::vector<particle_t> &local_particles,  grid_t *grid, double st
         counter++;
         grid[id].count_++;
     }
+//    if(GetMPIrank() == 1){
+//
+//        std::cout << "--------------------------Bins = " << grid[0].count_ << " " << grid[1].count_ << " "<< grid[2].count_ << " \n";
+//
+//    }
     MPI_Barrier(MPI_COMM_WORLD);
 
 }
@@ -94,7 +99,7 @@ void erase_buffer_particles(grid_t *grid, std::vector<particle_t> &localParticle
     }
 //    int locSize = localParticles.size();
     for (int i = 0; i < localParticles.size(); i++) {
-        if((localParticles[i].x < RealBoundaryStart ) or (localParticles[i].x > RealBoundaryEnd)){
+        if((localParticles[i].x < RealBoundaryStart ) or (localParticles[i].x >= RealBoundaryEnd)){
             std::iter_swap(&localParticles[i], &localParticles[localParticles.size() - 1]);
             localParticles.pop_back();
             i = i - 1;
@@ -147,6 +152,9 @@ void packBuffers(std::vector<particle_t> &local_particles, std::vector<particle_
         }
         ///TODO: put binning here
     }
+//    if(GetMPIrank() == 1){
+//        std::cout << "-------------------------BIns = " << down_buffer.size() <<  " " << bufferEndBoundary << "\n";
+//    }
 
 }
 
@@ -296,8 +304,16 @@ int main(int argc, char *argv[]) {
     MPI_Barrier(MPI_COMM_WORLD);
 
     grid_t *grid = (grid_t *) malloc(NumGrid * num_row * sizeof(grid_t));
-
-
+    if(rank == 1)
+    {
+        int i = 4;
+        unsigned int idx = i / NumGrid;
+        unsigned int idy = i % NumGrid;
+        std::cout << idx  << " " << idy << " " << num_row << " " << NumGrid << "\n";
+        std::cout << "Result = " << (idx == 0) << " "<< (idy == 0) << " " << (idy == (NumGrid - 1) ) << " " <<(idx == (num_row - 1) ) << "\n";
+     }
+     MPI_Barrier(MPI_COMM_WORLD);
+//    assert(false);
     // particle_t *local_buffer_up =  (particle_t*) malloc( ParticlePerGrid*NumGrid * sizeof(particle_t) );
     // particle_t *local_buffer_down =  (particle_t*) malloc( ParticlePerGrid*NumGrid * sizeof(particle_t) );
     for (int i = 0; i < NumGrid * num_row; i++) {
@@ -368,9 +384,9 @@ int main(int argc, char *argv[]) {
         // std::cout << num_row << "\n";
 
         for (int i = 0; i < NumGrid; i++) {
-            grid[(num_row - 2) * NumGrid + i].neighbours_[N] = -1;
-            grid[(num_row - 2) * NumGrid + i].neighbours_[NW] = -1;
-            grid[(num_row - 2) * NumGrid + i].neighbours_[NE] = -1;
+//            grid[(num_row - 2) * NumGrid + i].neighbours_[N] = -1;
+//            grid[(num_row - 2) * NumGrid + i].neighbours_[NW] = -1;
+//            grid[(num_row - 2) * NumGrid + i].neighbours_[NE] = -1;
         }
     }
 
@@ -405,6 +421,14 @@ int main(int argc, char *argv[]) {
         }
 
 
+    }
+    if(rank == 1){
+        for(int i = 0; i < num_row*NumGrid; i++){
+            for(int j = 0; j < 8; j++) {
+                std::cout << "Neighbours of i = " << i << " " <<grid[i].neighbours_[j] << " ";
+            }
+            std::cout << "\n";
+        }
     }
 
     int sum_all;
@@ -452,20 +476,49 @@ int main(int argc, char *argv[]) {
 //        std::cout << global_max << "\n";
 //    }
 //    assert(false);
-    for (int step = 0; step < 15; step++) {
+    for (int step = 0; step < 14; step++) {
+        if(step == 13 and (rank == 1)){
+            for(int i = 0; i < local_particles.size();i++){
+                std::cout << "Local Particles = " << local_particles[i].x << " " << local_particles[i].y << " " << local_particles[i].ax << " " << local_particles[i].ay
+                << " " << local_particles[i].gid << " "<< startGrid << " "<< endGrid << "\n";
+            }
+        }
         max_vel = 0;
         for (int i = startGrid; i < endGrid; i++) {
+            if((rank == 1) and (step == 13)){
+                int _idx_ = grid[i].id_[i];
+                std::cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<Base particle = " << local_particles[_idx_].x << " "<< local_particles[_idx_].y << " " <<local_particles[_idx_].vx << " "
+                          << local_particles[_idx_].vy << " " << local_particles[_idx_].ax << " " << local_particles[_idx_].ay << "\n";
+            }
+            if(rank == 1){
+                std::cout << "--------------------Step = " << step << " " <<grid[i].count_ << "\n";
+            }
             for (int part = 0; part < grid[i].count_; part++) {
                 local_particles[grid[i].id_[part]].ax = 0;
                 local_particles[grid[i].id_[part]].ay = 0;
+
                 for (int partGrid = 0; partGrid < grid[i].count_; partGrid++) {
+                    if((rank == 1) and (step == 13)){
+                        int _idx_ = grid[i].id_[partGrid];
+                        std::cout << "Interacting particle = " << local_particles[_idx_].x << " "<< local_particles[_idx_].y << " " <<local_particles[_idx_].vx << " "
+                                  << local_particles[_idx_].vy << " " << local_particles[_idx_].ax << " " << local_particles[_idx_].ay << "\n";
+                    }
+
                     apply_force(local_particles[grid[i].id_[part]], local_particles[grid[i].id_[partGrid]], &dmin,
                                 &davg, &navg);
                 }
                 for (int neigh = 0; neigh < 8; neigh++) {
                     unsigned int neighbour_id = grid[i].neighbours_[neigh];
+                    if(rank == 1 and step == 13){
+                        std::cout << "Neighbour id = " << neigh << " " << part << " " << step << " "<<  neighbour_id << "\n";
+                    }
                     if (neighbour_id != -1) {
                         for (int part_neigh = 0; part_neigh < grid[neighbour_id].count_; part_neigh++) {
+                            if((rank == 1) and (step == 13)){
+                                int _idx_ = grid[neighbour_id].id_[part_neigh];
+                                std::cout << "Interacting particle neigh= " << local_particles[_idx_].x << " "<< local_particles[_idx_].y << " " <<local_particles[_idx_].vx << " "
+                                          << local_particles[_idx_].vy << " " << local_particles[_idx_].ax << " " << local_particles[_idx_].ay << "\n";
+                            }
                             apply_force(local_particles[grid[i].id_[part]],
                                         local_particles[grid[neighbour_id].id_[part_neigh]], &dmin, &davg, &navg);
 
@@ -479,6 +532,7 @@ int main(int argc, char *argv[]) {
 
             }
         }
+        MPI_Barrier(MPI_COMM_WORLD);
 
         double global_max;
         MPI_Reduce(&max_vel,&global_max,1,MPI_DOUBLE,MPI_MAX,0,MPI_COMM_WORLD);
@@ -487,7 +541,7 @@ int main(int argc, char *argv[]) {
         }
 
         erase_buffer_particles(grid, local_particles, rank, num_row, n_proc, NumGrid,realProcBoundaryStart,realProcBoundaryEnd);
-        std::string filename = "file" + std::to_string(n_proc) + "_" + std::to_string(rank) + "_" + std::to_string(step);
+       std::string filename = "file" + std::to_string(n_proc) + "_" + std::to_string(rank) + "_" + std::to_string(step);
         std::ofstream myfile;
 
         myfile.open (filename);
@@ -500,14 +554,14 @@ int main(int argc, char *argv[]) {
 
         int num_part;
         int local_part = static_cast<int>(local_particles.size());
-        std::cout << local_part << "\n";
+//        std::cout << local_part << "\n";
         MPI_Reduce(&local_part, &num_part, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 //        std::cout << "Step =  " << step << " Rank = " <<rank << " Local Size = " <<  local_part << "\n";
         MPI_Barrier(MPI_COMM_WORLD);
         if (rank == 0) {
 
             if(n != num_part){
-
+                std::cout << "Num part = " <<num_part << "\n";
             }
             assert(n == num_part);
         }
@@ -516,13 +570,13 @@ int main(int argc, char *argv[]) {
         for (int part = 0; part < local_particles.size(); part++) {
             move(local_particles[part]);
         }
-        packBuffers(local_particles, send_up, send_down, exchangeBoundaryUp, exchangeBoundaryDown);
+        packBuffers(local_particles, send_up, send_down, exchangeBoundaryDown, exchangeBoundaryUp);
         MPI_Request request[2];
         MPI_Status status[2];
         MPI_Isend(send_up.data(), send_up.size(), PARTICLE, exchange_up, send_up.size(), MPI_COMM_WORLD, &request[0]);
         MPI_Isend(send_down.data(), send_down.size(), PARTICLE, exchange_down, send_down.size(), MPI_COMM_WORLD,
                   &request[1]);
-        std::cout << send_up.size() << " " << send_down.size() << "\n";
+//        std::cout << send_up.size() << " " << send_down.size() << "\n";
         MPI_Recv(&receive_up[0], 100, PARTICLE, exchange_up, MPI_ANY_TAG, MPI_COMM_WORLD, &status[0]);
         MPI_Recv(&receive_down[0], 100, PARTICLE, exchange_down, MPI_ANY_TAG, MPI_COMM_WORLD, &status[1]);
         for (int i = 0; i < status[0].MPI_TAG; i++) {
@@ -537,15 +591,15 @@ int main(int argc, char *argv[]) {
             local_particles.push_back(receive_down[i]);
         }
         clear_bins(grid, num_row * NumGrid);
-        bin_particles(local_particles,grid,start_proc_boundary,end_proc_boundary,NumGrid,dx);
+        bin_particles(local_particles,grid,start_proc_boundary,end_proc_boundary,NumGrid,OneByDx);
 
         checkWithinBB(local_particles, start_proc_boundary, end_proc_boundary);
-        if((step == 14) and (rank == 1)){
-            for(int i = 0; i < local_particles.size(); i++){
-                std::cout << local_particles[i].x << " " << local_particles[i].y << " " << local_particles[i].vx << " " <<
-                local_particles[i].vy << " " << local_particles[i].ax << " " << local_particles[i].ay << "\n";
-            }
-        }
+//        if((step == 14) and (rank == 1)){
+//            for(int i = 0; i < local_particles.size(); i++){
+//                std::cout << local_particles[i].x << " " << local_particles[i].y << " " << local_particles[i].vx << " " <<
+//                local_particles[i].vy << " " << local_particles[i].ax << " " << local_particles[i].ay << "\n";
+//            }
+//        }
     }
 
     //     std::cout << counter << "\n";
