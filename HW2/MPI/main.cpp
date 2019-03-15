@@ -399,52 +399,27 @@ int main(int argc, char *argv[]) {
     std::vector<particle_t> local_particles;
     bin_particles_start(local_particles, particles, grid, start_proc_boundary, end_proc_boundary, n, NumGrid, OneByDx);
     MPI_Barrier(MPI_COMM_WORLD);
+   
     free(particles);
     int sum(0);
     MPI_Barrier(MPI_COMM_WORLD);
- /*   for (int i = 0; i < n_proc; i++) {
-        if (rank == i) {
-            std::cout << "Rank = " << rank << " Start Grid = " << startGrid << " End Grid = " << endGrid << "\n";
 
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-    for (int i = startGrid; i < endGrid; i++) {
-        sum += grid[i].count_;
-        for (int j = 0; j < grid[i].count_; j++) {
-            double x = local_particles[grid[i].id_[j]].x;
-            if (not((x >= realProcBoundaryStart) and (x <= realProcBoundaryEnd))) {
-                std::cout << "X = " << x << " " << rank << " " << realProcBoundaryStart << " " << realProcBoundaryEnd
-                          << "\n";
-            }
-            assert((x >= realProcBoundaryStart) and (x <= realProcBoundaryEnd));
-        }
-
-
-    }*/
-
-
-   /* int sum_all;
-    MPI_Reduce(&sum, &sum_all, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-
-
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (rank == 0) {
-        assert(sum_all == n);
-    }*/
 
     std::vector<particle_t> send_up, send_down;
     unsigned int exchangeParticleSize = ParticlePerGrid * 2 * NumGrid;
     particle_t *receive_up = (particle_t *) malloc(exchangeParticleSize * sizeof(particle_t));
     particle_t *receive_down = (particle_t *) malloc(exchangeParticleSize * sizeof(particle_t));
-    /**Checking particle exchange **/
-
+   
+     
 
     MPI_Request request[2];
     MPI_Status status[2];
     int startN = 0;
+     double simulation_time = read_timer( );
     for (int step = 0; step < NSTEPS; step++) {
+        navg = 0;
+        dmin = 1.0;
+        davg = 0.0;
         MPI_Irecv(&receive_up[0], exchangeParticleSize, PARTICLE, exchange_up, MPI_ANY_TAG, MPI_COMM_WORLD,&request[0]);
         MPI_Irecv(&receive_down[0], exchangeParticleSize, PARTICLE, exchange_down, MPI_ANY_TAG, MPI_COMM_WORLD,&request[1]);
         for (int i = startGrid; i < endGrid; i++) {
@@ -469,6 +444,26 @@ int main(int argc, char *argv[]) {
                     }
                 }
             }
+        }
+        
+        if( find_option( argc, argv, "-no" ) == -1 )
+        {
+          
+          MPI_Reduce(&davg,&rdavg,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+          MPI_Reduce(&navg,&rnavg,1,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
+          MPI_Reduce(&dmin,&rdmin,1,MPI_DOUBLE,MPI_MIN,0,MPI_COMM_WORLD);
+
+ 
+          if (rank == 0){
+            //
+            // Computing statistical data
+            //
+            if (rnavg) {
+              absavg +=  rdavg/rnavg;
+              nabsavg++;
+            }
+            if (rdmin < absmin) absmin = rdmin;
+          }
         }
 
         erase_buffer_particles(grid, local_particles, rank, num_row, n_proc, NumGrid, realProcBoundaryStart,
@@ -503,9 +498,47 @@ int main(int argc, char *argv[]) {
         binBufferparticles(local_particles, grid, start_proc_boundary, end_proc_boundary, NumGrid, OneByDx, startN);
 
     }
+  simulation_time = read_timer( ) - simulation_time;
 
+ if (rank == 0) {  
+      printf( "n = %d, simulation time = %g seconds", n, simulation_time);
 
-
-    MPI_Finalize();
+      if( find_option( argc, argv, "-no" ) == -1 )
+      {
+        if (nabsavg) absavg /= nabsavg;
+      // 
+      //  -the minimum distance absmin between 2 particles during the run of the simulation
+      //  -A Correct simulation will have particles stay at greater than 0.4 (of cutoff) with typical values between .7-.8
+      //  -A simulation were particles don't interact correctly will be less than 0.4 (of cutoff) with typical values between .01-.05
+      //
+      //  -The average distance absavg is ~.95 when most particles are interacting correctly and ~.66 when no particles are interacting
+      //
+      printf( ", absmin = %lf, absavg = %lf", absmin, absavg);
+      
+      if (absmin < 0.4) printf ("\nThe minimum distance is below 0.4 meaning that some particle is not interacting");
+      if (absavg < 0.8) printf ("\nThe average distance is below 0.8 meaning that most particles are not interacting");
+      }
+      printf("\n");     
+        
+      //  
+      // Printing summary data
+      //  
+    //   if( fsum)
+    //     fprintf(fsum,"%d %d %g\n",n,n_proc,simulation_time);
+    }
+  
+    //
+    //  release resources
+    //
+    if ( fsum )
+        fclose( fsum );
+    free( partition_offsets );
+    free( partition_sizes );
+    // free( local );
+    // free( particles );
+    if( fsave )
+        fclose( fsave );
+    
+    MPI_Finalize( );
     return 0;
 }
